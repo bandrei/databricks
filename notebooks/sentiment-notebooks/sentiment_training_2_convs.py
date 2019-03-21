@@ -129,7 +129,7 @@ hr = HorovodRunner(np=2)
 now = datetime.datetime.now()
 model_name = "sentiment_model_" + now.strftime("%Y%m%d%H%M") + ".h5"
 model_checkpoints = model_name + "_weights.hdf5"
-logdir="/dbfs/FileStore/ml/logs" + model_name
+logdir="/dbfs/FileStore/ml/logs/" + model_name
 checkpoints_path = "/dbfs/mnt/models/" + model_checkpoints
 model_save_path = "/dbfs/mnt/models/" + model_name
 hr.run(train, epochs=80, logdir=logdir, model_path=model_save_path, checkpoints_path=checkpoints_path)
