@@ -127,11 +127,14 @@ def train(epochs, logdir, checkpoints_path, model_path):
 now = datetime.datetime.now()
 model_name = "sentiment_model_" + now.strftime("%Y%m%d%H%M") + ".h5"
 model_checkpoints = model_name + "_weights.hdf5"
-logdir="/tmp/logs/" + model_name
+logdir="/dbfs/FileStore/ml/logs/single/" + model_name
 checkpoints_path = "/dbfs/mnt/models/" + model_checkpoints
 model_save_path = "/dbfs/mnt/models/" + model_name
 train(epochs=80, logdir=logdir, model_path=model_save_path, checkpoints_path=checkpoints_path)
-dbutils.fs.mv(lodgir, "/dbfs/mnt/models/tensorboard/"+model_name)
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
