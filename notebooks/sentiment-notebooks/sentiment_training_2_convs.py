@@ -75,11 +75,15 @@ def train(epochs, logdir, checkpoints_path, model_path):
   epochs = int(math.ceil(epochs / hvd.size()))
 
   config = tf.ConfigProto()
+  config.gpu_options.allow_growth = True
   config.gpu_options.visible_device_list = str(hvd.local_rank())
+  tf.keras.backend.set_session(tf.Session(config=config))
+  
+  print("Local rank {}".format(hvd.local_rank()))
   
   input_layer = tf.keras.layers.Input(shape=(sen_len,), dtype=tf.int32)
 
-  layer_embed = tf.keras.layers.Embedding(voc_size, weights=[embedding_matrix], trainable=True, output_dim=emb_dim)(input_layer)
+  layer_embed = tf.keras.layers.Embedding(voc_size, weights=[embedding_matrix], trainable=False, output_dim=emb_dim)(input_layer)
   layer_lstm = tf.keras.layers.LSTM(1, dropout=0.95, return_sequences=True)(layer_embed)
 
   layer_conv3 = tf.keras.layers.Conv1D(hid_dim, 3, activation="relu")(layer_embed)
@@ -115,9 +119,9 @@ def train(epochs, logdir, checkpoints_path, model_path):
   test_start = 70000 + hvd.rank() * test_size
   test_end = 80000 + hvd.rank() * test_size
   print("HVD rank {}".format(hvd.rank()))
-  callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir + "hvd_rank_{}".format(hvd.rank()), histogram_freq=0, write_graph=True, write_images=True))
-  if hvd.rank() == 0:
-    callbacks.append(tf.keras.callbacks.ModelCheckpoint(filepath=checkpoints_path, monitor="val_acc", mode='max'))    
+
+  callbacks.append(tf.keras.callbacks.ModelCheckpoint(filepath=checkpoints_path  + "_hvd_rank_{}".format(hvd.rank()), monitor="val_acc", mode='max'))
+  callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir + "_hvd_rank_{}".format(hvd.rank()), histogram_freq=0, write_graph=True))
   model.fit(x_train[train_start:train_end,:], y_train[train_start:train_end,:], batch_size=batch_size, validation_data=(x_train[test_start:test_end,:],y_train[test_start:test_end,:]), epochs=epochs, callbacks=callbacks)
   tf.keras.models.save_model(model, model_path, overwrite=True, include_optimizer=True)
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
@@ -130,7 +134,7 @@ hr = HorovodRunner(np=2)
 now = datetime.datetime.now()
 model_name = "sentiment_model_" + now.strftime("%Y%m%d%H%M") + ".h5"
 model_checkpoints = model_name + "_weights.hdf5"
-logdir="/tmp/logs/" + model_name
+logdir="/dbfs/FileStore/ml/logs/" + model_name
 checkpoints_path = "/dbfs/mnt/models/" + model_checkpoints
 model_save_path = "/dbfs/mnt/models/" + model_name
 hr.run(train, epochs=80, logdir=logdir, model_path=model_save_path, checkpoints_path=checkpoints_path)
