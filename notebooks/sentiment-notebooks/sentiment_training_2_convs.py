@@ -83,7 +83,7 @@ def train(epochs, logdir, checkpoints_path, model_path):
   
   input_layer = tf.keras.layers.Input(shape=(sen_len,), dtype=tf.int32)
 
-  layer_embed = tf.keras.layers.Embedding(voc_size, weights=[embedding_matrix], trainable=False, output_dim=emb_dim)(input_layer)
+  layer_embed = tf.keras.layers.Embedding(voc_size, weights=[embedding_matrix], trainable=True, output_dim=emb_dim)(input_layer)
   layer_lstm = tf.keras.layers.LSTM(1, dropout=0.95, return_sequences=True)(layer_embed)
 
   layer_conv3 = tf.keras.layers.Conv1D(hid_dim, 3, activation="relu")(layer_embed)
@@ -134,11 +134,10 @@ hr = HorovodRunner(np=2)
 now = datetime.datetime.now()
 model_name = "sentiment_model_" + now.strftime("%Y%m%d%H%M") + ".h5"
 model_checkpoints = model_name + "_weights.hdf5"
-logdir="/dbfs/FileStore/ml/logs/" + model_name
+logdir="/dbfs/FileStore/ml/logs/multi/" + model_name
 checkpoints_path = "/dbfs/mnt/models/" + model_checkpoints
 model_save_path = "/dbfs/mnt/models/" + model_name
 hr.run(train, epochs=80, logdir=logdir, model_path=model_save_path, checkpoints_path=checkpoints_path)
-dbutils.fs.mv(lodgir, "/dbfs/mnt/models/tensorboard/"+model_name)
 
 # COMMAND ----------
 
