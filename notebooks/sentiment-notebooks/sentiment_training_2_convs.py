@@ -108,17 +108,18 @@ def train(epochs, logdir, checkpoints_path, model_path):
 
   callbacks = []
   callbacks.append(hvd.callbacks.BroadcastGlobalVariablesCallback(0))
+  train_size = 35000
+  test_size = 10000
+  train_start = hvd.rank() * train_size
+  train_end = (hvd.rank() + 1)* train_size
+  test_start = 70000 + hvd.rank() * test_size
+  test_end = 80000 + hvd.rank() * test_size
   print("HVD rank {}".format(hvd.rank()))
+  callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir + "hvd_rank_{}".format(hvd.rank()), histogram_freq=0, write_graph=True, write_images=True))
   if hvd.rank() == 0:
-    callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir, histogram_freq=0, write_graph=True, write_images=True))
-    callbacks.append(tf.keras.callbacks.ModelCheckpoint(filepath=checkpoints_path, monitor="val_acc", mode='max'))
-    
-  model.fit(x_train[:70000,:], y_train[:70000,:], batch_size=batch_size, validation_data=(x_train[70000:90000,:],y_train[70000:90000,:]), epochs=epochs, callbacks=callbacks)
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(filepath=checkpoints_path, monitor="val_acc", mode='max'))    
+  model.fit(x_train[train_start:train_end,:], y_train[train_start:train_end,:], batch_size=batch_size, validation_data=(x_train[test_start:test_end,:],y_train[test_start:test_end,:]), epochs=epochs, callbacks=callbacks)
   tf.keras.models.save_model(model, model_path, overwrite=True, include_optimizer=True)
-
-# COMMAND ----------
-
-def score():
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
   tf.logging.info("Score: {}".format(score))
 
@@ -129,11 +130,11 @@ hr = HorovodRunner(np=2)
 now = datetime.datetime.now()
 model_name = "sentiment_model_" + now.strftime("%Y%m%d%H%M") + ".h5"
 model_checkpoints = model_name + "_weights.hdf5"
-logdir="/dbfs/FileStore/ml/logs/" + model_name
+logdir="/tmp/logs/" + model_name
 checkpoints_path = "/dbfs/mnt/models/" + model_checkpoints
 model_save_path = "/dbfs/mnt/models/" + model_name
 hr.run(train, epochs=80, logdir=logdir, model_path=model_save_path, checkpoints_path=checkpoints_path)
-score()
+dbutils.fs.mv(lodgir, "/dbfs/mnt/models/tensorboard/"+model_name)
 
 # COMMAND ----------
 
